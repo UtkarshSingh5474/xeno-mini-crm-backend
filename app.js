@@ -20,8 +20,9 @@ app.use('/api', testRoutes); // Use the test routes
 
 const startServer = async () => {
   await connectDB();
-  app.listen(process.env.PORT || 5000, () => {
-    console.log('Server is running on port 5000');
+  const PORT = process.env.PORT || 5000; // Use 3000 as a fallback
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
   });
 };
 

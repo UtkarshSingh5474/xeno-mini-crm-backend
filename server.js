@@ -1,8 +1,7 @@
-
 require('dotenv').config();
 const { connectDB, getDB } = require('./config/db');
 const { consumeQueue, publishToQueue } = require('./services/pubsubService');
-const { sendToVendorAPI } = require('./services/vendorApiService');
+const { sendToVendorAPI } = require('./services/vendorApi');
 const { ObjectId } = require('mongodb'); // Import ObjectId
 
 const startConsumer = async () => {
@@ -44,7 +43,22 @@ const startConsumer = async () => {
       } else if (message.type === 'customer') {
         await db.collection('customers').insertOne(message.data);
       } else if (message.type === 'order') {
-        await db.collection('orders').insertOne(message.data);
+        const orderData = message.data;
+        await db.collection('orders').insertOne(orderData);
+
+        // Update customer data
+        const customer = await db.collection('customers').findOne({ _id: new ObjectId(orderData.customer_id) });
+        if (customer) {
+          await db.collection('customers').updateOne(
+            { _id: new ObjectId(orderData.customer_id) },
+            {
+              $inc: { total_spends: orderData.amount, visits: 1 },
+              $set: { last_visit: orderData.order_date }
+            }
+          );
+        } else {
+          console.error(`Customer not found for id: ${orderData.customer_id}`);
+        }
       }
     } catch (error) {
       console.error('Error processing message:', error);

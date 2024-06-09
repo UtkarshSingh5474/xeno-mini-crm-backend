@@ -2,7 +2,7 @@ const axios = require('axios');
 const { getDB } = require('../config/db');
 const { publishToQueue } = require('../services/pubsubService');
 const { getAudienceSizeHandler } = require('./audienceController');
-const { sendToVendorAPI } = require('../services/vendorApiService');
+const { sendToVendorAPI } = require('../services/vendorApi');
 
 const createCampaign = async (req, res) => {
   const { campaignName, campaignMessage, rules } = req.body;

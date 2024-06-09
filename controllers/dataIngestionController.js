@@ -28,6 +28,12 @@ const ingestOrderData = async (req, res) => {
     // Validate order data using Mongoose
     await order.validate();
 
+    // Check if customer exists
+    const customer = await Customer.findById(order.customer_id);
+    if (!customer) {
+      return res.status(400).send('Customer not found');
+    }
+
     // Publish validated data to queue
     await publishToQueue({ type: 'order', data: orderData });
 

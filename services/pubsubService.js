@@ -3,10 +3,19 @@ const { connectDB, getDB } = require('../config/db');
 
 const url = process.env.RABBITMQ_URI;
 
+let connection = null;
+let channel = null;
+
 const connectQueue = async () => {
-  const connection = await amqp.connect(url);
-  const channel = await connection.createChannel();
+  if (connection && channel) {
+    return { connection, channel };
+  }
+
+  connection = await amqp.connect(url);
+  channel = await connection.createChannel();
   await channel.assertQueue('dataQueue', { durable: true });
+
+  console.log('Connected to RabbitMQ');
   return { connection, channel };
 };
 

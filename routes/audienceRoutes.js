@@ -1,7 +1,7 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { getAudienceSize } = require('../controllers/audienceController');
+const { getAudienceSize } = require("../controllers/audienceController");
 
-router.post('/size', getAudienceSize);
+router.post("/size", getAudienceSize);
 
 module.exports = router;

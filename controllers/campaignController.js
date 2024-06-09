@@ -1,15 +1,14 @@
-const axios = require('axios');
-const { getDB } = require('../config/db');
-const { publishToQueue } = require('../services/pubsubService');
-const { getAudienceSizeHandler } = require('./audienceController');
-const { sendToVendorAPI } = require('../services/vendorApi');
+const axios = require("axios");
+const { getDB } = require("../config/db");
+const { publishToQueue } = require("../services/pubsubService");
+const { getAudienceSizeHandler } = require("./audienceController");
+const { sendToVendorAPI } = require("../services/vendorApi");
 
 const createCampaign = async (req, res) => {
   const { campaignName, campaignMessage, rules } = req.body;
   const db = getDB();
 
   try {
-    // Call the audience/size endpoint to get the audience size
     const audienceSize = await getAudienceSizeHandler(rules);
 
     const communicationLog = {
@@ -17,19 +16,22 @@ const createCampaign = async (req, res) => {
       campaignMessage,
       audienceRules: rules,
       audienceSize,
-      deliveryStatus: 'Pending',
+      deliveryStatus: "Pending",
       createdAt: new Date(),
       sentCount: 0,
-      failedCount: 0
+      failedCount: 0,
     };
 
-    const result = await db.collection('communication_log').insertOne(communicationLog);
+    const result = await db
+      .collection("communication_log")
+      .insertOne(communicationLog);
     const communicationId = result.insertedId;
 
-    // Call sendCampaignMessages internally
     await sendCampaignMessagesInternal(communicationId);
 
-    res.status(201).send('Communication log created and messages are being sent');
+    res
+      .status(201)
+      .send("Communication log created and messages are being sent");
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -37,30 +39,37 @@ const createCampaign = async (req, res) => {
 
 const sendCampaignMessagesInternal = async (communicationId) => {
   const db = getDB();
-  const communicationLog = await db.collection('communication_log').findOne({ _id: communicationId });
+  const communicationLog = await db
+    .collection("communication_log")
+    .findOne({ _id: communicationId });
 
   if (!communicationLog) {
-    throw new Error('Communication log not found');
+    throw new Error("Communication log not found");
   }
 
   const { audienceRules, campaignMessage } = communicationLog;
 
   let audience = [];
   if (!audienceRules || audienceRules.length === 0) {
-    // No audience rules, send to all customers
-    audience = await db.collection('customers').find().toArray();
+    audience = await db.collection("customers").find().toArray();
   } else {
     const mongoQuery = parseAudienceRules(audienceRules);
-    console.log('Sending messages to audience:', JSON.stringify(audienceRules, null, 2));
-    console.log('MongoDB Query:', JSON.stringify(mongoQuery, null, 2));
-    audience = await db.collection('customers').find({ $and: mongoQuery }).toArray();
+    console.log(
+      "Sending messages to audience:",
+      JSON.stringify(audienceRules, null, 2)
+    );
+    console.log("MongoDB Query:", JSON.stringify(mongoQuery, null, 2));
+    audience = await db
+      .collection("customers")
+      .find({ $and: mongoQuery })
+      .toArray();
   }
 
-  console.log('Audience size:', audience.length);
+  console.log("Audience size:", audience.length);
 
   const messages = audience.map((customer) => ({
     customerId: customer._id,
-    message: campaignMessage.replace('{customer_name}', customer.name)
+    message: campaignMessage.replace("{customer_name}", customer.name),
   }));
 
   for (const message of messages) {
@@ -70,42 +79,44 @@ const sendCampaignMessagesInternal = async (communicationId) => {
 
 const getCampaigns = async (req, res) => {
   const db = getDB();
-  const communications = await db.collection('communication_log').find().sort({ createdAt: -1 }).toArray();
+  const communications = await db
+    .collection("communication_log")
+    .find()
+    .sort({ createdAt: -1 })
+    .toArray();
   res.status(200).json(communications);
 };
 
 const parseAudienceRules = (rules) => {
-  const mongoQuery = rules.map(rule => {
+  const mongoQuery = rules.map((rule) => {
     const { field, operator, value } = rule;
     let mongoOperator;
     let parsedValue = value;
 
-    // Determine the correct MongoDB operator
     switch (operator) {
-      case '>':
-        mongoOperator = '$gt';
+      case ">":
+        mongoOperator = "$gt";
         break;
-      case '>=':
-        mongoOperator = '$gte';
+      case ">=":
+        mongoOperator = "$gte";
         break;
-      case '<':
-        mongoOperator = '$lt';
+      case "<":
+        mongoOperator = "$lt";
         break;
-      case '<=':
-        mongoOperator = '$lte';
+      case "<=":
+        mongoOperator = "$lte";
         break;
-      case '==':
-        mongoOperator = '$eq';
+      case "==":
+        mongoOperator = "$eq";
         break;
-      case '!=':
-        mongoOperator = '$ne';
+      case "!=":
+        mongoOperator = "$ne";
         break;
       default:
         throw new Error(`Unsupported operator: ${operator}`);
     }
 
-    // Parse the value based on the field type
-    if (field === 'last_visit') {
+    if (field === "last_visit") {
       parsedValue = new Date(value);
     } else {
       parsedValue = parseFloat(value);

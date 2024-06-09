@@ -1,45 +1,44 @@
-const { getDB } = require('../config/db');
+const { getDB } = require("../config/db");
 
 const getAudienceSizeHandler = async (rules) => {
   const db = getDB();
 
-  let query = { $and: [] };  // Start with an AND condition at the top level
+  let query = { $and: [] };
 
   rules.forEach((rule) => {
     let condition = {};
     let value = rule.value;
 
-    if (rule.field === 'last_visit') {
+    if (rule.field === "last_visit") {
       value = new Date(value);
-    } else if (rule.field === 'visits') {
+    } else if (rule.field === "visits") {
       value = parseInt(value, 10);
-    } else if (rule.field === 'total_spends') {
+    } else if (rule.field === "total_spends") {
       value = parseFloat(value);
     }
 
     switch (rule.operator) {
-      case '>':
+      case ">":
         condition[rule.field] = { $gt: value };
         break;
-      case '<':
+      case "<":
         condition[rule.field] = { $lt: value };
         break;
-      case '=':
+      case "=":
         condition[rule.field] = value;
         break;
-      case '!=':
+      case "!=":
         condition[rule.field] = { $ne: value };
         break;
-      case '>=':
+      case ">=":
         condition[rule.field] = { $gte: value };
         break;
-      case '<=':
+      case "<=":
         condition[rule.field] = { $lte: value };
         break;
-      // Add more operators as needed
     }
 
-    if (rule.condition === 'AND') {
+    if (rule.condition === "AND") {
       query.$and.push(condition);
     } else {
       if (!query.$or) {
@@ -49,13 +48,12 @@ const getAudienceSizeHandler = async (rules) => {
     }
   });
 
-  // Ensure query.$and is not empty
   if (query.$and.length === 0) {
     delete query.$and;
   }
 
   try {
-    const audienceSize = await db.collection('customers').countDocuments(query);
+    const audienceSize = await db.collection("customers").countDocuments(query);
     return audienceSize;
   } catch (error) {
     throw new Error(error.message);

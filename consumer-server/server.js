@@ -1,31 +1,45 @@
+const amqp = require('amqplib');
 require("dotenv").config();
-const { connectDB, getDB } = require("./config/db");
-const { consumeQueue, publishToQueue } = require("./services/pubsubService");
-const { sendToVendorAPI } = require("./services/vendorApi");
+const { connectDB, getDB } = require("./db");
 const { ObjectId } = require("mongodb");
 
+const url = process.env.RABBITMQ_URI;
+
+let connection = null;
+let channel = null;
+
 let deliveryReceiptsQueue = [];
+
+const consumeQueue = async (callback) => {
+  const { channel } = await connectQueue();
+  channel.consume('dataQueue', (msg) => {
+    if (msg !== null) {
+      const data = JSON.parse(msg.content.toString());
+      callback(data);
+      channel.ack(msg);
+    }
+  });
+};
+
+const connectQueue = async () => {
+  if (connection && channel) {
+    return { connection, channel };
+  }
+
+  connection = await amqp.connect(url);
+  channel = await connection.createChannel();
+  await channel.assertQueue('dataQueue', { durable: true });
+
+  console.log('Connected to RabbitMQ');
+  return { connection, channel };
+};
 
 const startConsumer = async () => {
   await connectDB();
   consumeQueue(async (message) => {
     const db = getDB();
     try {
-      if (message.type === "campaignMessage") {
-        const response = await sendToVendorAPI(
-          message.data.message,
-          message.data.communicationId,
-          message.data.customerId
-        );
-        await publishToQueue({
-          type: "deliveryReceipt",
-          data: {
-            communicationId: message.data.communicationId,
-            customerId: message.data.customerId,
-            status: response.status,
-          },
-        });
-      } else if (message.type === "deliveryReceipt") {
+      if (message.type === "deliveryReceipt") {
         deliveryReceiptsQueue.push(message.data);
       } else if (message.type === "customer") {
         await db.collection("customers").insertOne(message.data);

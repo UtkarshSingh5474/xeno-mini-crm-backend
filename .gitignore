@@ -1,1 +1,5 @@
 /node_modules
+/api-backend/node_modules
+/consumer-server/node_modules
+/consumer-server/.env
+/api-backend/.env

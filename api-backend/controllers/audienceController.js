@@ -62,6 +62,7 @@ const getAudienceSizeHandler = async (rules) => {
   }
 
   try {
+    console.log(query);
     const audienceSize = await db.collection("customers").countDocuments(query);
     return audienceSize;
   } catch (error) {

@@ -17,24 +17,33 @@ const getAudienceSizeHandler = async (rules) => {
       value = parseFloat(value);
     }
 
+    const dateCondition = (operator, value) => ({
+      $expr: {
+        [operator]: [
+          { $dateFromParts: { year: { $year: "$last_visit" }, month: { $month: "$last_visit" }, day: { $dayOfMonth: "$last_visit" } } },
+          value
+        ]
+      }
+    });
+
     switch (rule.operator) {
       case ">":
-        condition[rule.field] = { $gt: value };
+        condition = rule.field === "last_visit" ? dateCondition("$gt", value) : { [rule.field]: { $gt: value } };
         break;
       case "<":
-        condition[rule.field] = { $lt: value };
+        condition = rule.field === "last_visit" ? dateCondition("$lt", value) : { [rule.field]: { $lt: value } };
         break;
       case "=":
-        condition[rule.field] = value;
+        condition = rule.field === "last_visit" ? dateCondition("$eq", value) : { [rule.field]: value };
         break;
       case "!=":
-        condition[rule.field] = { $ne: value };
+        condition = rule.field === "last_visit" ? dateCondition("$ne", value) : { [rule.field]: { $ne: value } };
         break;
       case ">=":
-        condition[rule.field] = { $gte: value };
+        condition = rule.field === "last_visit" ? dateCondition("$gte", value) : { [rule.field]: { $gte: value } };
         break;
       case "<=":
-        condition[rule.field] = { $lte: value };
+        condition = rule.field === "last_visit" ? dateCondition("$lte", value) : { [rule.field]: { $lte: value } };
         break;
     }
 

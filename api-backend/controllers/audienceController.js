@@ -11,7 +11,7 @@ const getAudienceSizeHandler = async (rules) => {
     let value = rule.value;
 
     if (rule.field === "last_visit") {
-      value = new Date(value); // Ensure value is a Date object
+      value = new Date(value);
       let startOfDay = new Date(value.setUTCHours(0, 0, 0, 0));
       let endOfDay = new Date(value.setUTCHours(23, 59, 59, 999));
 

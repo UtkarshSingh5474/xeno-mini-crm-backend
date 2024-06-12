@@ -3,17 +3,18 @@ const { getDB } = require("../config/db");
 const getAudienceSizeHandler = async (rules) => {
   const db = getDB();
 
-  let query = { $and: [] };
+  let andConditions = [];
+  let orConditions = [];
 
   rules.forEach((rule) => {
     let condition = {};
     let value = rule.value;
 
     if (rule.field === "last_visit") {
-      value = new ISODate(value);
+      value = new Date(value); // Ensure value is a Date object
       let startOfDay = new Date(value.setUTCHours(0, 0, 0, 0));
       let endOfDay = new Date(value.setUTCHours(23, 59, 59, 999));
-      
+
       switch (rule.operator) {
         case ">":
           condition[rule.field] = { $gt: endOfDay };
@@ -31,7 +32,7 @@ const getAudienceSizeHandler = async (rules) => {
           condition[rule.field] = { $gte: startOfDay };
           break;
         case "<=":
-          condition[rule.field] = { $lt: endOfDay };
+          condition[rule.field] = { $lte: endOfDay };
           break;
       }
     } else {
@@ -64,18 +65,15 @@ const getAudienceSizeHandler = async (rules) => {
     }
 
     if (rule.condition === "AND") {
-      query.$and.push(condition);
-    } else {
-      if (!query.$or) {
-        query.$or = [];
-      }
-      query.$or.push(condition);
+      andConditions.push(condition);
+    } else if (rule.condition === "OR") {
+      orConditions.push(condition);
     }
   });
 
-  if (query.$and.length === 0) {
-    delete query.$and;
-  }
+  let query = {};
+  if (andConditions.length > 0) query.$and = andConditions;
+  if (orConditions.length > 0) query.$or = orConditions;
 
   try {
     const audienceSize = await db.collection("customers").countDocuments(query);
